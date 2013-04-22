@@ -408,14 +408,12 @@ package as3richtext
 					}
 					else if (nodeName == "emo") // 表情
 					{
-						// 确定需求后加回去
 						if (emotionCreator != null)
 						{
 							elements.push(parseEmotion(child, node));
 						}
 					}
-					// modified by no4matrix, 支持font标签
-					else if (nodeName == "span" || nodeName == "font") // span or font
+					else if (nodeName == "span") // span
 					{
 						elements.push(parseSpan(child, node));
 					}
