@@ -1,17 +1,25 @@
 package
 {
 	import flash.display.Sprite;
+	import flash.display.StageAlign;
+	import flash.display.StageScaleMode;
 	import flash.text.engine.ElementFormat;
 	import flash.text.engine.FontDescription;
 	import flash.text.engine.TextBlock;
 	import flash.text.engine.TextElement;
 	import flash.text.engine.TextLine;
+	import as3richtext.RichText;
 
 	public class as3richtext extends Sprite
 	{
 		public function as3richtext()
 		{
-			test();
+			stage.align = StageAlign.TOP_LEFT;
+			stage.scaleMode = StageScaleMode.NO_SCALE;
+			var rta:RichText = new RichText();
+			rta.width = 400;
+			addChild(rta);
+			rta.runTest();
 		}
 
 		public function test():void
