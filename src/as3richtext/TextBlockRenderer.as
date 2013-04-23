@@ -2,7 +2,13 @@ package as3richtext
 {
 	import flash.display.Shape;
 	import flash.display.Sprite;
+	import flash.events.Event;
+	import flash.events.MouseEvent;
+	import flash.filters.GlowFilter;
 	import flash.geom.Rectangle;
+	import flash.text.TextField;
+	import flash.text.TextFieldAutoSize;
+	import flash.text.TextFormat;
 	import flash.text.engine.ContentElement;
 	import flash.text.engine.FontMetrics;
 	import flash.text.engine.GroupElement;
@@ -110,6 +116,7 @@ package as3richtext
 			while (numChildren)
 			{
 				var line:TextLine = removeChildAt(0) as TextLine;
+				line.removeChildren();
 
 				if (contains(line))
 				{
@@ -169,7 +176,7 @@ package as3richtext
 				// 遍历所有的行
 				while (lineIndex < numChildren)
 				{
-					//trace("[check] lineIndex", lineIndex);
+					trace("[check] lineIndex", lineIndex);
 					var line:TextLine = getChildAt(lineIndex) as TextLine;
 					var begin:int = line.getAtomIndexAtCharIndex(element.textBlockBeginIndex);
 					var end:int = line.getAtomIndexAtCharIndex(element.textBlockBeginIndex + element.rawText.length - 1);
@@ -206,6 +213,36 @@ package as3richtext
 						var rect:Rectangle = line.getAtomBounds(begin).union(line.getAtomBounds(end));
 						line.addChild(createUnderline(rect.x, fontMetrics.underlineOffset, rect.width, fontMetrics.underlineThickness, element.elementFormat.color));
 					}
+					// 调试用
+					function drawDebug():void
+					{
+						var bgColor:uint = isDraw ? 0x0000ff : 0x666666;
+						var fontColor:uint = isDraw ? 0xffff00 : 0xff00ff;
+						var fontMetrics:FontMetrics = element.elementFormat.getFontMetrics();
+						var rect:Rectangle = line.getAtomBounds(begin).union(line.getAtomBounds(end));
+						var result:Shape = new Shape();
+						result.graphics.beginFill(bgColor, 0.5);
+						result.graphics.drawRect(rect.x, rect.y, rect.width, rect.height);
+						line.addChild(result);
+						var tf:TextField = new TextField();
+						tf.addEventListener(MouseEvent.CLICK, function(e:Event):void
+						{
+							e.currentTarget.visible = !e.currentTarget.visible;
+						});
+						tf.filters = [ new GlowFilter(0, 1, 2, 2, 10)];
+						tf.x = rect.x;
+						tf.y = rect.y;
+						tf.autoSize = TextFieldAutoSize.LEFT;
+						tf.selectable = false;
+						tf.defaultTextFormat = new TextFormat("宋体", "12", fontColor);
+						line.addChild(tf);
+						tf.text = "[" + line.getAtomIndexAtCharIndex(element.textBlockBeginIndex) + ":" + line.getAtomIndexAtCharIndex(element.textBlockBeginIndex + element.rawText.length - 1) + "]";
+					}
+
+					if (true)
+					{
+						drawDebug();
+					}
 
 					if (!isContinue)
 					{
@@ -231,7 +268,7 @@ package as3richtext
 
 		private static function createUnderline(x:Number, y:Number, width:Number, thickness:Number, color:uint):Shape
 		{
-			//trace(x, y, width, thickness, color.toString(16));
+			trace(x, y, width, thickness, color.toString(16));
 			var result:Shape = new Shape();
 			result.graphics.lineStyle(thickness, color);
 			result.graphics.moveTo(x, y);

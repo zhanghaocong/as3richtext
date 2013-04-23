@@ -23,6 +23,7 @@ package as3richtext
 	import flash.ui.MouseCursor;
 	import flash.utils.clearInterval;
 	import flash.utils.setInterval;
+	import flash.utils.setTimeout;
 
 	/**
 	 * RichText
@@ -32,17 +33,25 @@ package as3richtext
 	[Event(name="link", type="flash.events.TextEvent")]
 	public class RichText extends Sprite
 	{
-		protected static const OverrideStyleAttributes:Array = [ "@color", "@underline",
-																 "@bold" ];
+		/**
+		 * 需要覆盖的样式
+		 */
+		protected static const COPY_STYLES:Array = [ "@color", "@underline",
+													 "@bold" ];
 
 		/**
 		 * 默认字体尺寸和颜色<br/>
 		 * 在所有 RichText 实例中共享
 		 */
-		protected static var defaultFormat:ElementFormat = new ElementFormat(new FontDescription("微软雅黑"));
+		protected static var DEFAULT_FORMAT:ElementFormat = new ElementFormat(new FontDescription("微软雅黑"));
 		// 设置文字对齐方式，IDEOGRAPHIC_BOTTOM 表示无论文字还是图片，都使用底对齐
-		defaultFormat.dominantBaseline = TextBaseline.IDEOGRAPHIC_BOTTOM;
-		defaultFormat.alignmentBaseline = TextBaseline.IDEOGRAPHIC_BOTTOM;
+		DEFAULT_FORMAT.dominantBaseline = TextBaseline.IDEOGRAPHIC_BOTTOM;
+		DEFAULT_FORMAT.alignmentBaseline = TextBaseline.IDEOGRAPHIC_BOTTOM;
+
+		/**
+		 * 默认 body
+		 */
+		protected static var DEFAULT_BODY:XML = <body spacing="5"></body>;
 
 		protected var blocks:Vector.<TextBlock> = new Vector.<TextBlock>;
 
@@ -56,6 +65,18 @@ package as3richtext
 			this.width = width;
 			this.maxLines = maxLines;
 			init();
+		}
+
+		protected function init():void
+		{
+			content = DEFAULT_BODY.copy();
+			// 给链接元素使用的侦听镜像
+			linkDispatcher = new EventDispatcher();
+			linkDispatcher.addEventListener(MouseEvent.MOUSE_OVER, link_onMouseOver);
+			linkDispatcher.addEventListener(MouseEvent.MOUSE_OUT, link_onMouseOut);
+			linkDispatcher.addEventListener(MouseEvent.MOUSE_MOVE, link_onMouseMove);
+			linkDispatcher.addEventListener(MouseEvent.MOUSE_DOWN, link_onMouseDown);
+			linkDispatcher.addEventListener(MouseEvent.CLICK, link_onClick);
 		}
 
 		private var _width:int;
@@ -75,58 +96,37 @@ package as3richtext
 			_width = value;
 		}
 
-		protected function init():void
+		private var _maxLines:uint = uint.MAX_VALUE;
+
+		/**
+		 * 设置或获取最大行数，该值越大性能越差<br/>
+		 * @return
+		 *
+		 */
+		public function get maxLines():uint
 		{
-			content = <body spacing="5"></body>;
-			// 给链接元素使用的侦听镜像
-			linkDispatcher = new EventDispatcher();
-			linkDispatcher.addEventListener(MouseEvent.MOUSE_OVER, link_mouseOverHandler);
-			linkDispatcher.addEventListener(MouseEvent.MOUSE_OUT, link_mouseOutHandler);
-			linkDispatcher.addEventListener(MouseEvent.MOUSE_MOVE, link_mouseMoveHandler);
-			linkDispatcher.addEventListener(MouseEvent.MOUSE_DOWN, link_mouseDownHandler);
-			linkDispatcher.addEventListener(MouseEvent.CLICK, link_clickHandler);
+			return _maxLines;
 		}
 
-		public function runTest():void
+		public function set maxLines(value:uint):void
 		{
-			content = <body spacing="5">
-					<p>单行文本</p>
-					<p>可以使用使用<span underline="true"><![CDATA[<br/>]]></span><br/>手动换行</p>
-					<p color="0xff0000" bold="true">除了<span bold="false" color="0x00ff00" underline="true">我是绿色带下划线不加粗</span>，整个段落都是红色加粗，并且自然换行；除了<span bold="false" color="0x00ff00" underline="true">我是绿色带下划线不加粗</span>，整个段落都是红色加粗，并且自然换行；除了<span bold="false" color="0x00ff00" underline="true">我是绿色带下划线不加粗</span>，整个段落都是红色加粗，并且自然换行；</p>
-					<p>表情下方应有<span underline="true" color="0xff0000">红色下划线<emo id="1"/></span></p>
-					<p><emo id="1"/>图<emo id="1"/>文<emo id="1"/>混<emo id="1"/>排</p>;
-					<p><a href="http://www.google.com" underline="true" color="0x0000ff">谷歌<emo id="1"/></a></p>
-					<p><a href="event:custom_data">测试自定义数据<br/>也可手动换行</a></p>
-				</body>;
-			var i:int = 0;
-			var id:int = setInterval(function():void
+			if (_maxLines != value)
 			{
-				i++;
-				append(<p>测试追加{i}</p>);
-
-				if (i >= 20)
-				{
-					clearInterval(id);
-				}
-			}, 100);
-			// 测试 link 事件
-			function onLink(event:TextEvent):void
-			{
-				trace("[RichText] runTest", event.text);
+				_maxLines = value;
+				invalidate();
 			}
-			addEventListener(TextEvent.LINK, onLink);
 		}
 
-		protected function link_mouseMoveHandler(event:MouseEvent):void
+		protected function link_onMouseMove(event:MouseEvent):void
 		{
 			Mouse.cursor = MouseCursor.BUTTON;
 		}
 
-		protected function link_mouseDownHandler(event:MouseEvent):void
+		protected function link_onMouseDown(event:MouseEvent):void
 		{
 		}
 
-		protected function link_clickHandler(event:MouseEvent):void
+		protected function link_onClick(event:MouseEvent):void
 		{
 			var line:TextLine = event.currentTarget as TextLine;
 
@@ -151,12 +151,12 @@ package as3richtext
 			}
 		}
 
-		protected function link_mouseOutHandler(event:MouseEvent):void
+		protected function link_onMouseOut(event:MouseEvent):void
 		{
 			Mouse.cursor = MouseCursor.AUTO;
 		}
 
-		protected function link_mouseOverHandler(event:MouseEvent):void
+		protected function link_onMouseOver(event:MouseEvent):void
 		{
 			Mouse.cursor = MouseCursor.BUTTON;
 		}
@@ -177,7 +177,7 @@ package as3richtext
 		{
 			if (!appendContent)
 			{
-				appendContent = <body></body>;
+				appendContent = DEFAULT_BODY.copy();
 			}
 			appendContent.appendChild(p);
 			appendContentChanged = true;
@@ -218,27 +218,6 @@ package as3richtext
 			invalidate();
 		}
 
-		private var _maxLines:uint = uint.MAX_VALUE;
-
-		/**
-		 * 设置或获取最大行数，该值越大性能越差<br/>
-		 * @return
-		 *
-		 */
-		public function get maxLines():uint
-		{
-			return _maxLines;
-		}
-
-		public function set maxLines(value:uint):void
-		{
-			if (_maxLines != value)
-			{
-				_maxLines = value;
-				invalidate();
-			}
-		}
-
 		/**
 		 * 要求渲染
 		 *
@@ -261,11 +240,16 @@ package as3richtext
 		protected function onRender(event:Event):void
 		{
 			removeEventListener(Event.RENDER, onRender);
+
+			// 不需要渲染
+			if (!(contentChanged || appendContentChanged))
+			{
+				return;
+			}
+			// 用于转换的中间变量
 			var bodyToParse:XML;
 			const appendOnly:Boolean = appendContentChanged && !contentChanged;
 
-			// 从数据层上合并追加了的内容
-			// 只进行了追加操作
 			if (appendOnly)
 			{
 				appendContentChanged = false;
@@ -278,41 +262,38 @@ package as3richtext
 				blocks.length = 0;
 			}
 
-			if (bodyToParse)
+			// 根据需要进行合并
+			if (appendContent)
 			{
-				// 把每个 <p> 转换成 TextBlock
-				var newBlocks:Vector.<TextBlock> = parseBody(bodyToParse, _content);
-				blocks = blocks.concat(newBlocks);
-
-				if (appendContent)
-				{
-					mergeAppendContent();
-				}
-
-				// 接下来删除多余的 blocks：先确认 blocks 的长度是否已超过 maxLines，如果已超过就丢弃
-				while (blocks.length > _maxLines)
-				{
-					delete content..p[0]; // 不要忘记删掉老的 content
-					blocks.shift();
-
-					// 取出第一个并放到队列的最后，这样可以重复利用 TextBlockRenderer
-					// 最多只会有 n 个 TextBlockRenderer，n = maxLines
-					if (blockRenderers.length > 1)
-					{
-						var renderer:TextBlockRenderer = blockRenderers.shift();
-						renderer.block = null;
-						blockRenderers.push(renderer);
-					}
-				}
-
-				// 如果新的 content 行数比原来的小，则要把多出来的 blockRenderer 也删掉
-				while (blocks.length < blockRenderers.length)
-				{
-					removeChild(blockRenderers.pop());
-				}
-				// 一切准备就绪，让 TextBlockRenderer 进行渲染
-				renderBlocks();
+				mergeAppendContent();
 			}
+			// 把每个 <p> 转换成 TextBlock
+			var newBlocks:Vector.<TextBlock> = parseBody(bodyToParse, _content);
+			blocks = blocks.concat(newBlocks);
+
+			// 接下来删除多余的 blocks：先确认 blocks 的长度是否已超过 maxLines，如果已超过就丢弃
+			while (blocks.length > _maxLines)
+			{
+				delete content..p[0]; // 不要忘记删掉老的 content
+				blocks.shift();
+
+				// 取出第一个并放到队列的最后，这样可以重复利用 TextBlockRenderer
+				// 最多只会有 n 个 TextBlockRenderer，n = maxLines
+				if (blockRenderers.length > 1)
+				{
+					var renderer:TextBlockRenderer = blockRenderers.shift();
+					renderer.block = null;
+					blockRenderers.push(renderer);
+				}
+			}
+
+			// 如果新的 content 行数比原来的小，则要把多出来的 blockRenderer 也删掉
+			while (blocks.length < blockRenderers.length)
+			{
+				removeChild(blockRenderers.pop());
+			}
+			// 一切准备就绪，让 TextBlockRenderer 进行渲染
+			renderBlocks();
 		}
 
 		/**
@@ -396,7 +377,7 @@ package as3richtext
 				}
 				else
 				{
-					overrideStyles(child, node);
+					copyStyles(child, node);
 					// TODO 找个 hash 存一下对应的分析方法以便扩展
 					var nodeName:String = child.name();
 					// modified by no4matrix, 统一转小写
@@ -431,7 +412,7 @@ package as3richtext
 					}
 				}
 			}
-			return new GroupElement(elements, defaultFormat)
+			return new GroupElement(elements, DEFAULT_FORMAT)
 		}
 
 		/**
@@ -523,7 +504,7 @@ package as3richtext
 
 			if (styles.hasOwnProperty("@color") || styles.hasOwnProperty("@bold"))
 			{
-				newFormat = defaultFormat.clone();
+				newFormat = DEFAULT_FORMAT.clone();
 
 				if (styles.hasOwnProperty("@color"))
 				{
@@ -539,7 +520,7 @@ package as3richtext
 			}
 			else
 			{
-				newFormat = defaultFormat;
+				newFormat = DEFAULT_FORMAT;
 			}
 			// 创建 GraphicElement 并设置下划线一些属性
 			var result:GraphicElement = new GraphicElement(emo, emo.width, emo.height, newFormat);
@@ -568,7 +549,7 @@ package as3richtext
 
 			if (styles.hasOwnProperty("@color") || styles.hasOwnProperty("@bold") || styles.hasOwnProperty("@lineSpacing"))
 			{
-				newFormat = defaultFormat.clone();
+				newFormat = DEFAULT_FORMAT.clone();
 
 				if (styles.hasOwnProperty("@color"))
 				{
@@ -584,7 +565,7 @@ package as3richtext
 			}
 			else
 			{
-				newFormat = defaultFormat;
+				newFormat = DEFAULT_FORMAT;
 			}
 			var result:TextElement = new TextElement(node, newFormat);
 
@@ -599,15 +580,50 @@ package as3richtext
 			return result;
 		}
 
+		public function runTest():void
+		{
+			content = <body spacing="5">
+					<p>单行文本</p>
+					<p>可以使用使用<span underline="true"><![CDATA[<br/>]]></span><br/>手动换行</p>
+					<p color="0xff0000" bold="true">除了<span bold="false" color="0x00ff00" underline="true">我是绿色带下划线不加粗</span>，整个段落都是红色加粗，并且自然换行；除了<span bold="false" color="0x00ff00" underline="true">我是绿色带下划线不加粗</span>，整个段落都是红色加粗，并且自然换行；除了<span bold="false" color="0x00ff00" underline="true">我是绿色带下划线不加粗</span>，整个段落都是红色加粗，并且自然换行；</p>
+					<p>表情下方应有<span underline="true" color="0xff0000">红色下划线<emo id="1"/></span></p>
+					<p><emo id="1"/>图<emo id="1"/>文<emo id="1"/>混<emo id="1"/>排</p>;
+					<p><a href="http://www.google.com" underline="true" color="0x0000ff">谷歌<emo id="1"/></a></p>
+					<p><a href="event:custom_data">测试自定义数据<br/>也可手动换行</a></p>
+				</body>;
+			var i:int = 0;
+			var id:int = setInterval(function():void
+			{
+				i++;
+				append(<p>测试追加{i}</p>);
+
+				if (i >= 20)
+				{
+					clearInterval(id);
+				}
+			}, 100);
+			setTimeout(function():void
+			{
+				var c:XML = content.copy();
+				c.appendChild(<p color="0xff0000">特殊追加</p>);
+				content = c;
+			}, 1000);
+			// 测试 link 事件
+			addEventListener(TextEvent.LINK, function(event:TextEvent):void
+			{
+				trace("[RichText] runTest", event.text);
+			});
+		}
+
 		/**
 		 * 覆盖样式
 		 * @param node
 		 * @param styles
 		 *
 		 */
-		private function overrideStyles(node:XML, styles:XML):void
+		private function copyStyles(node:XML, styles:XML):void
 		{
-			for each (var attr:String in OverrideStyleAttributes)
+			for each (var attr:String in COPY_STYLES)
 			{
 				if (!node.hasOwnProperty(attr) && styles.hasOwnProperty(attr))
 				{
