@@ -176,7 +176,7 @@ package as3richtext
 				// 遍历所有的行
 				while (lineIndex < numChildren)
 				{
-					trace("[check] lineIndex", lineIndex);
+					// trace("[check] lineIndex", lineIndex);
 					var line:TextLine = getChildAt(lineIndex) as TextLine;
 					var begin:int = line.getAtomIndexAtCharIndex(element.textBlockBeginIndex);
 					var end:int = line.getAtomIndexAtCharIndex(element.textBlockBeginIndex + element.rawText.length - 1);
